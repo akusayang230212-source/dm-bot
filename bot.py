@@ -7,6 +7,7 @@ import asyncio
 import re
 from datetime import datetime
 from dotenv import load_dotenv
+from aiohttp import web
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -451,4 +452,24 @@ async def on_ready():
     await tree.sync()
     print(f"✅ Bot aktif sebagai {bot.user} | Slash commands synced!")
 
-bot.run(TOKEN)
+
+# ── Keep-alive web server (biar gratis di Render) ─────────────────────────────
+async def run_web():
+    async def handle(request):
+        return web.Response(text="Bot is alive!")
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"🌐 Web server jalan di port {port}")
+
+async def main():
+    await asyncio.gather(
+        run_web(),
+        bot.start(TOKEN)
+    )
+
+asyncio.run(main())
